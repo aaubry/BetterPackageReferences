@@ -1,0 +1,103 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!--
+    Supported version range types:
+      - Exact: Exact version match. Only this specific ersion will be allowed.
+      - SemVer: Allow any minor version increment, but require the same major version.
+      - Minimum: Minimum version, inclusive. Any superior version will be allowed. (this is the default behavior of nuget pack)
+  -->
+
+  <PropertyGroup>
+    <DefaultVersionRangeTypeForProjectReferences>Exact</DefaultVersionRangeTypeForProjectReferences>
+    <DefaultVersionRangeTypeForPackageReferences>SemVer</DefaultVersionRangeTypeForPackageReferences>
+  </PropertyGroup>
+
+  <Target Name="GenerateNuspecWithoutPacking" BeforeTargets="GenerateNuspec">
+    <PropertyGroup>
+      <ContinuePackingAfterGeneratingNuspec>false</ContinuePackingAfterGeneratingNuspec>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="PatchNuspecDependencies" AfterTargets="GenerateNuspec">
+    <PropertyGroup>
+      <NuspecPath>%(NuGetPackOutput.Identity)</NuspecPath>
+    </PropertyGroup>
+
+    <MSBuild
+      Projects="$(MSBuildProjectFile)"
+      Condition="'%(_ProjectReferencesWithVersions.Identity)' != ''"
+      Properties="ReferencedProject=%(_ProjectReferencesWithVersions.Identity);PackageVersion=%(_ProjectReferencesWithVersions.ProjectVersion);NuspecPath=$(NuspecPath)"
+      Targets="PatchNuspecProjectDependency" />
+
+    <MSBuild
+      Projects="$(MSBuildProjectFile)"
+      Condition="'%(PackageReference.Identity)' != '' AND '%(PackageReference.IsImplicitlyDefined)' != 'true'"
+      Properties="PackageName=%(PackageReference.Identity);PackageVersion=%(PackageReference.Version);VersionRangeType=%(PackageReference.VersionRangeType);NuspecPath=$(NuspecPath)"
+      Targets="PatchNuspecPackageDependency" />
+
+    <PackTask
+      NuspecFile="$(NuspecPath)"
+      PackItem="$(PackProjectInputFile)"
+      NuspecOutputPath="$(NuspecOutputAbsolutePath)"
+      PackageOutputPath="$(PackageOutputAbsolutePath)"
+      SymbolPackageFormat="$(SymbolPackageFormat)" />
+
+  </Target>
+
+  <Target Name="PatchNuspecDependency" AfterTargets="PatchNuspecProjectDependency;PatchNuspecPackageDependency">
+    <Error Condition="'$(PackageName)' == ''" Text="PackageName is not defined" />
+    <Error Condition="'$(PackageVersion)' == ''" Text="PackageVersion is not defined" />
+    <Error Condition="'$(VersionRangeType)' == ''" Text="VersionRangeType is not defined" />
+
+    <PropertyGroup>
+      <PackageVersionMajorIndex>$(PackageVersion.IndexOf('.'))</PackageVersionMajorIndex>
+      <PackageVersionMajor>$(PackageVersion.Substring('0', '$(PackageVersionMajorIndex)'))</PackageVersionMajor>
+      <PackageVersionRemainder>$(PackageVersion.Substring('$(PackageVersionMajorIndex)'))</PackageVersionRemainder>
+    </PropertyGroup>
+
+    <PropertyGroup>
+      <VersionExpression Condition="'$(VersionRangeType)' == 'Minimum'">$(PackageVersion)</VersionExpression>
+      <VersionExpression Condition="'$(VersionRangeType)' == 'Exact'">[$(PackageVersion)]</VersionExpression>
+      <VersionExpression Condition="'$(VersionRangeType)' == 'SemVer'">[$(PackageVersion), $([MSBuild]::Add('1', '$(PackageVersionMajor)')).0.0)</VersionExpression>
+    </PropertyGroup>
+
+    <Message Text="PackageName: $(PackageName)" />
+    <Message Text="VersionRangeType: $(VersionRangeType)" />
+    <Message Text="VersionExpression: $(VersionExpression)" />
+
+    <PropertyGroup>
+      <Namespace>
+        <Namespace Prefix="dft" Uri="http://schemas.microsoft.com/packaging/2012/06/nuspec.xsd" />
+      </Namespace>
+    </PropertyGroup>
+
+    <XmlPoke
+      XmlInputPath="$(NuspecPath)"
+      Value="$(VersionExpression)"
+      Query='/dft:package/dft:metadata/dft:dependencies/dft:group/dft:dependency[@id="$(PackageName)"]/@version'
+      Namespaces="$(Namespace)"
+    />
+
+  </Target>
+
+  <Target Name="PatchNuspecPackageDependency">
+    <PropertyGroup>
+      <VersionRangeType Condition="'$(VersionRangeType)' == ''">$(DefaultVersionRangeTypeForPackageReferences)</VersionRangeType>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="PatchNuspecProjectDependency">
+    <ItemGroup>
+      <CurrentReference Condition="$([System.IO.Path]::GetFullPath('$(ProjectDir)\%(ProjectReference.Identity)')) == $(ReferencedProject)" Include="%(ProjectReference.Identity)">
+        <VersionRangeType>%(ProjectReference.VersionRangeType)</VersionRangeType>
+      </CurrentReference>
+    </ItemGroup>
+
+    <PropertyGroup>
+      <PackageName>$([System.IO.Path]::GetFileNameWithoutExtension($(ReferencedProject)))</PackageName>
+      <VersionRangeType>%(CurrentReference.VersionRangeType)</VersionRangeType>
+      <VersionRangeType Condition="'$(VersionRangeType)' == ''">$(DefaultVersionRangeTypeForProjectReferences)</VersionRangeType>
+    </PropertyGroup>
+  </Target>
+
+</Project>

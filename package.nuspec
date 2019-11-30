@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<package>
+  <metadata>
+    <id>BetterPackageReferences</id>
+    <version>0.0.1</version>
+    <authors>Antoine Aubry</authors>
+    <owners>Antoine Aubry</owners>
+    <license type="expression">MIT</license>
+    <projectUrl>https://github.com/aaubry/BetterPackageReferences</projectUrl>
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    <developmentDependency>true</developmentDependency>
+    <description>Provides finer control over NuGet package dependencies. Check readme.md for details.</description>
+    <tags>msbuild semver</tags>
+    <repository type="git" url="https://github.com/aaubry/BetterPackageReferences.git" branch="$branch$" commit="$commit$" />
+  </metadata>
+  <files>
+    <file src="BetterPackageReferences.targets" target="build" />
+    <file src="BetterPackageReferences.targets" target="buildMultiTargeting" />
+  </files>
+</package>
