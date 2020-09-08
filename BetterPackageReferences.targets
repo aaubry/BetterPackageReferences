@@ -12,12 +12,6 @@
     <DefaultVersionRangeTypeForPackageReferences>SemVer</DefaultVersionRangeTypeForPackageReferences>
   </PropertyGroup>
 
-  <Target Name="GenerateNuspecWithoutPacking" BeforeTargets="GenerateNuspec">
-    <PropertyGroup>
-      <ContinuePackingAfterGeneratingNuspec>false</ContinuePackingAfterGeneratingNuspec>
-    </PropertyGroup>
-  </Target>
-
   <Target Name="PatchNuspecDependencies" AfterTargets="GenerateNuspec">
     <PropertyGroup>
       <NuspecPath>%(NuGetPackOutput.Identity)</NuspecPath>
