@@ -14,7 +14,7 @@
 
   <Target Name="PatchNuspecDependencies" AfterTargets="GenerateNuspec">
     <PropertyGroup>
-      <NuspecPath>%(NuGetPackOutput.Identity)</NuspecPath>
+      <NuspecPath>$(NuspecOutputAbsolutePath)$(PackageId).$(Version).nuspec</NuspecPath>
     </PropertyGroup>
 
     <MSBuild
